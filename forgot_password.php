@@ -30,12 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'your-email@gmail.com'; // Replace with your actual Gmail address
-            $mail->Password   = 'your-app-password';   // Replace with your actual Gmail App Password
+            $mail->Username   = 'dormkey7@gmail.com'; // Replace with your actual Gmail address
+            $mail->Password   = 'affrimzjoaffmqtp';   // Replace with your actual Gmail App Password
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
 
-            $mail->setFrom('your-email@gmail.com', 'DormKey Security');
+            $mail->setFrom('dormkey7@gmail.com', 'DormKey Security');
             $mail->addAddress($email, $user['first_name']);
 
             $mail->isHTML(true);
