@@ -1,0 +1,2 @@
+[php]
+phpExtensions = ["pdo", "pdo_mysql", "mysqli"]
