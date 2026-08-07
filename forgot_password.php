@@ -1,122 +1,66 @@
 <?php
 session_start();
-require_once 'config/db.php';
+require 'config/db.php'; // Adjust path to your DB connection
+require 'vendor/autoload.php';
 
-$step = 1;
-$user_id = null;
-$error = '';
-$success = '';
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-// STEP 1: Process Email Submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_account'])) {
-    $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
 
-    if ($email) {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+    // 1. Check if email exists in Database
+    $stmt = $pdo->prepare("SELECT id, first_name FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
 
-        if ($user) {
-            $_SESSION['reset_user_id'] = $user['id'];
-            $step = 2;
-        } else {
-            $error = "No account found with that email address.";
-        }
-    } else {
-        $error = "Please enter a valid email address.";
-    }
-}
+    if ($user) {
+        // 2. Generate 6-digit OTP and expiration (10 minutes)
+        $otp = sprintf("%06d", mt_rand(100000, 999999));
+        $_SESSION['reset_email'] = $email;
+        $_SESSION['reset_otp'] = $otp;
+        $_SESSION['otp_expiry'] = time() + (10 * 60); // Valid for 10 minutes
 
-// STEP 2: Process Resetting Password
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
-    $new_password = $_POST['new_password'] ?? '';
-    $confirm_password = $_POST['confirm_password'] ?? '';
-    $reset_id = $_SESSION['reset_user_id'] ?? null;
+        // 3. Send OTP using PHPMailer
+        $mail = new PHPMailer(true);
 
-    if ($reset_id && $new_password && $new_password === $confirm_password) {
-        $hashedPassword = password_hash($new_password, PASSWORD_BCRYPT);
-        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-        
-        if ($stmt->execute([$hashedPassword, $reset_id])) {
-            unset($_SESSION['reset_user_id']);
-            $_SESSION['success'] = "Password reset successfully! Please log in with your new password.";
-            header("Location: auth.php");
+        try {
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'your-email@gmail.com'; // Your Gmail address
+            $mail->Password   = 'your-app-password';   // Gmail App Password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
+
+            $mail->setFrom('your-email@gmail.com', 'DormKey Security');
+            $mail->addAddress($email, $user['first_name']);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'DormKey - Password Reset OTP';
+            $mail->Body    = "<h3>Password Reset Request</h3>
+                              <p>Your OTP for resetting your DormKey account password is: <b>{$otp}</b></p>
+                              <p>This OTP will expire in 10 minutes. If you did not request this, please ignore this email.</p>";
+
+            $mail->send();
+
+            $mail->send();
+
+            // Set the spam notification message in session
+            $_SESSION['info_msg'] = "An OTP has been sent to your email. If you don't see it in your Inbox, please check your Spam or Junk folder.";
+
+            // Redirect to OTP verification page
+            header("Location: verify_otp.php");
             exit();
-        } else {
-            $error = "Failed to update password. Please try again.";
-            $step = 2;
+
+            // 4. Redirect to OTP verification page
+            header("Location: verify_otp.php");
+            exit();
+        } catch (Exception $e) {
+            $error = "Failed to send OTP email. Mailer Error: {$mail->ErrorInfo}";
         }
     } else {
-        $error = "Passwords do not match or fields are empty.";
-        $step = 2;
+        $error = "No account found with that email address.";
     }
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DormKey - Recover Password</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-<!-- NAVBAR -->
-  <header class="navbar">
-    <div class="nav-container">
-      <a href="index.php" class="logo">Dorm<span>Key</span></a>
-      <nav class="nav-links">
-        <a href="index.php" class="nav-item">HOME</a>
-        <a href="about.php" class="nav-item">ABOUT</a>
-        <a href="help.php" class="nav-item">HELP</a>
-        <a href="auth.php" class="btn-auth active">LOGIN / SIGN UP</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="main-container auth-page-container">
-    <div class="fb-card" style="max-width: 450px; margin: 40px auto; text-align: left;">
-      
-      <div class="signup-header">
-        <h2><i class="fa-solid fa-key" style="color: var(--accent-gold);"></i> Find Your Account</h2>
-        <p>Please enter your registered email to reset your password.</p>
-      </div>
-
-      <?php if ($error): ?>
-        <div style="background:#FEE2E2; color:#991B1B; padding:10px; border-radius:6px; margin-bottom:16px; font-size:13px;">
-          <?= htmlspecialchars($error); ?>
-        </div>
-      <?php endif; ?>
-
-      <?php if ($step === 1): ?>
-        <!-- STEP 1 FORM: ENTER EMAIL -->
-        <form method="POST">
-          <div class="form-input-group">
-            <label class="input-label">Registered Email</label>
-            <input type="email" name="email" placeholder="Enter your email address" required>
-          </div>
-          <button type="submit" name="find_account" class="btn-fb-primary">Search Account</button>
-          <a href="auth.php" class="forgot-link" style="text-align:center; margin-top:12px;">Cancel & Back to Login</a>
-        </form>
-
-      <?php elseif ($step === 2): ?>
-        <!-- STEP 2 FORM: ENTER NEW PASSWORD -->
-        <form method="POST">
-          <div class="form-input-group">
-            <label class="input-label">New Password</label>
-            <input type="password" name="new_password" placeholder="Enter new password" required>
-          </div>
-          <div class="form-input-group">
-            <label class="input-label">Confirm New Password</label>
-            <input type="password" name="confirm_password" placeholder="Re-enter new password" required>
-          </div>
-          <button type="submit" name="reset_password" class="btn-fb-green full-width">Reset Password</button>
-        </form>
-      <?php endif; ?>
-
-    </div>
-  </main>
-
-</body>
-</html>
