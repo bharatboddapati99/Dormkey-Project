@@ -6,6 +6,8 @@ require 'vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+$error = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
 
@@ -28,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'your-email@gmail.com'; // Your Gmail address
-            $mail->Password   = 'your-app-password';   // Gmail App Password
+            $mail->Username   = 'your-email@gmail.com'; // Replace with your actual Gmail address
+            $mail->Password   = 'your-app-password';   // Replace with your actual Gmail App Password
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
 
@@ -44,8 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mail->send();
 
-            $mail->send();
-
             // Set the spam notification message in session
             $_SESSION['info_msg'] = "An OTP has been sent to your email. If you don't see it in your Inbox, please check your Spam or Junk folder.";
 
@@ -53,9 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: verify_otp.php");
             exit();
 
-            // 4. Redirect to OTP verification page
-            header("Location: verify_otp.php");
-            exit();
         } catch (Exception $e) {
             $error = "Failed to send OTP email. Mailer Error: {$mail->ErrorInfo}";
         }
@@ -64,3 +61,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password - DormKey</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        .error-msg {
+            color: #d9534f;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        button {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .back-link {
+            display: block;
+            margin-top: 15px;
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Forgot Password</h2>
+    <p>Enter your registered email address to receive a 6-digit verification OTP.</p>
+
+    <?php if (!empty($error)): ?>
+        <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
+    <?php endif; ?>
+
+    <form method="POST" action="forgot_password.php">
+        <input type="email" name="email" placeholder="Enter your email address" required>
+        <button type="submit">Send Reset OTP</button>
+    </form>
+
+    <a href="login.php" class="back-link">← Back to Login</a>
+</div>
+
+</body>
+</html>
