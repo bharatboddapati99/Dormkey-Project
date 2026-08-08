@@ -1,6 +1,6 @@
 <?php
 session_start();
-require 'config/db.php'; // Adjust path to your DB connection
+require 'config/db.php';
 require 'vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -21,19 +21,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $otp = sprintf("%06d", mt_rand(100000, 999999));
         $_SESSION['reset_email'] = $email;
         $_SESSION['reset_otp'] = $otp;
-        $_SESSION['otp_expiry'] = time() + (10 * 60); // Valid for 10 minutes
+        $_SESSION['otp_expiry'] = time() + (10 * 60);
 
         // 3. Send OTP using PHPMailer
         $mail = new PHPMailer(true);
 
         try {
+            // Enable detailed debug logging if an error occurs
+            $mail->SMTPDebug   = 2; 
+            $mail->Debugoutput = 'html';
+
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'dormkey7@gmail.com'; // Replace with your actual Gmail address
-            $mail->Password   = 'affrimzjoaffmqtp';   // Replace with your actual Gmail App Password
+            $mail->Username   = 'dormkey7@gmail.com'; // REPLACE WITH YOUR GMAIL
+            $mail->Password   = 'affrimzjoaffmqtp';     // REPLACE WITH YOUR 16-CHAR APP PASSWORD (NO SPACES)
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
+            $mail->Timeout    = 10; // 10-second connection timeout limit
+
+            // Bypass SSL certificate verification delays on Railway
+            $mail->SMTPOptions = array(
+                'ssl' => array(
+                    'verify_peer'       => false,
+                    'verify_peer_name'  => false,
+                    'allow_self_signed' => true
+                )
+            );
 
             $mail->setFrom('dormkey7@gmail.com', 'DormKey Security');
             $mail->addAddress($email, $user['first_name']);
@@ -44,9 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                               <p>Your OTP for resetting your DormKey account password is: <b>{$otp}</b></p>
                               <p>This OTP will expire in 10 minutes. If you did not request this, please ignore this email.</p>";
 
+            // Executed ONLY ONCE to prevent hangs
             $mail->send();
 
-            // Set the spam notification message in session
             $_SESSION['info_msg'] = "An OTP has been sent to your email. If you don't see it in your Inbox, please check your Spam or Junk folder.";
 
             // Redirect to OTP verification page
@@ -145,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit">Send Reset OTP</button>
     </form>
 
-    <a href="login.php" class="back-link">← Back to Login</a>
+    <a href="auth.php" class="back-link">← Back to Login</a>
 </div>
 
 </body>
