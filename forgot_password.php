@@ -36,9 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->SMTPAuth   = true;
             $mail->Username   = 'dormkey7@gmail.com'; // REPLACE WITH YOUR GMAIL
             $mail->Password   = 'affrimzjoaffmqtp';     // REPLACE WITH YOUR 16-CHAR APP PASSWORD (NO SPACES)
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port       = 465;
-            $mail->Timeout    = 10; // 10-second connection timeout limit
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 2525;
+            $mail->Timeout    = 30; // 10-second connection timeout limit
 
             // Bypass SSL certificate verification delays on Railway
             $mail->SMTPOptions = array(
